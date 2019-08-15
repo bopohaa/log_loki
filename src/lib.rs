@@ -29,7 +29,7 @@ mod tests {
     fn scrape_loki_test(){
         let scrape_conf = LokiScrapeConfig::new("http://localhost:3100/api/prom/push".to_string(), 1000, Some(3000), Some(60000), Some(30000));
         let scrape = Scrape::new();
-        let log_conf = LogMetricConfBuilder::with_label_names(&["one","two"]).build();
+        let log_conf = LogMetricConfBuilder::new().add_labels(&["one","two"]).build();
         let metrics = scrape.get(log_conf);
         {
             let mut container = metrics.lock().unwrap();
@@ -43,19 +43,14 @@ mod tests {
 
         let _res = scrape.start(scrape_conf);
 
-        std::thread::sleep(Duration::from_secs(10000));
+        std::thread::sleep(Duration::from_secs(10));
     }
 
     #[test]
     fn it_works()
     {
-        let b = LogMetricConfBuilder::with_label_names(&["three"]);
-        b.set_default_capacity(10);
-        b.add_const_label("one","1");
-        let c = b.build();
-
         let metric1 = {
-            Log::get(LogMetricConfBuilder::with_label_names(&["one","two"]).set_default_capacity(2).build())
+            Log::get(LogMetricConfBuilder::new().add_labels(&["one","two"]).set_default_capacity(2).build())
                 .lock()
                 .unwrap()
                 .get(&["1","2"])
@@ -68,7 +63,7 @@ mod tests {
             m.push_lazy(||"Message1-3".to_string());
         }
         let metric2 = {
-            Log::get(LogMetricConfBuilder::with_label_names(&["three"]).build())
+            Log::get(LogMetricConfBuilder::new().add_labels(&["three"]).build())
                 .lock()
                 .unwrap()
                 .get(&["3"])
@@ -81,7 +76,7 @@ mod tests {
             m.push("Message3-3".to_string());
         }
         let metric3 = {
-            Log::get(LogMetricConfBuilder::with_label_names(&["three"]).build())
+            Log::get(LogMetricConfBuilder::new().add_labels(&["three"]).build())
                 .lock()
                 .unwrap()
                 .get(&["4"])
@@ -94,7 +89,7 @@ mod tests {
             m.push("Message4-3".to_string());
         }
         let metric3 = {
-            Log::get(LogMetricConfBuilder::with_label_names(&["three"]).build())
+            Log::get(LogMetricConfBuilder::new().add_labels(&["three"]).build())
                 .lock()
                 .unwrap()
                 .get(&["4"])

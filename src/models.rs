@@ -4,24 +4,41 @@ use fnv::FnvHasher;
 
 const DEFAULT_CAPACITY:usize=1024;
 
+#[derive(Clone)]
 pub struct LogMetricConfBuilder{
     const_labels: Vec<[String;2]>,
     label_names:Vec<String>,
     default_capacity: usize,
 }
 
-#[allow(dead_code)]
-impl LogMetricConfBuilder {
-    pub fn with_label_names(label_names: &[&str]) -> Self {
+impl Default for LogMetricConfBuilder{
+    fn default() -> Self{
         LogMetricConfBuilder {
-            label_names: label_names.iter().map(|s| (*s).to_owned()).collect(),
+            label_names: Vec::new(),
             default_capacity: DEFAULT_CAPACITY,
             const_labels: Vec::new()
         }
     }
+}
+
+#[allow(dead_code)]
+impl LogMetricConfBuilder {
+    pub fn new() -> Self {
+        LogMetricConfBuilder::default()
+    }
 
     pub fn set_default_capacity(mut self, capacity: usize) -> Self {
         self.default_capacity = capacity;
+        self
+    }
+
+    pub fn add_label(mut self, label_name:&str)->Self{
+        self.label_names.push(label_name.to_string());
+        self
+    }
+
+    pub fn add_labels(mut self, label_names: &[&str])->Self{
+        self.label_names.extend(label_names.iter().map(|s| (*s).to_owned()));
         self
     }
 
@@ -30,12 +47,13 @@ impl LogMetricConfBuilder {
         self
     }
 
-    pub fn build(&self)->LogMetricConf {
+    pub fn build(self)->LogMetricConf {
+        let key = self.create_key();
         LogMetricConf{
-            const_labels:self.const_labels.as_slice().to_vec(),
-            label_names:self.label_names.as_slice().to_vec(),
+            key,
             default_capacity: self.default_capacity,
-            key: self.create_key()
+            const_labels:self.const_labels,
+            label_names:self.label_names,
         }
     }
 
