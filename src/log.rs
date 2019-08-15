@@ -1,5 +1,5 @@
 use std::sync::{Mutex,Arc};
-use std::collections::HashMap;
+use std::collections::{HashMap};
 use std::collections::vec_deque::{VecDeque};
 use std::vec::Vec;
 use std::iter::Iterator;
@@ -91,10 +91,13 @@ impl LogContainer {
             .or_insert_with(||Arc::new(Mutex::new(LogMetric::with_labels(conf, labels))))
     }
 
-
     pub fn map<F, R>(&self, mut map:F)->Vec<R>
         where F:FnMut(&mut LogMetric)->R {
         self._metrics.iter().map(|(_,e)|map(e.lock().unwrap().borrow_mut())).collect()
+    }
+
+    pub fn values(&self)->std::collections::hash_map::Values<'_, u64, Arc<Mutex<LogMetric>>>{
+        self._metrics.values()
     }
 
     fn get_key(labels: &[&str]) -> u64 {
@@ -114,6 +117,14 @@ lazy_static!{
 }
 
 impl Log {
+    pub fn create(config:LogMetricConf)->Option<Arc<Mutex<LogContainer>>>{
+        use std::collections::hash_map::Entry::*;
+        match CONTAINERS.lock().unwrap().entry(config.get_key()) {
+            Vacant(v)=>Some(v.insert(Arc::new(Mutex::new(LogContainer::with_config(config)))).clone()),
+            Occupied(_)=>None
+        }
+    }
+
     pub fn get(config:LogMetricConf)->Arc<Mutex<LogContainer>>{
         CONTAINERS.lock().unwrap()
             .entry(config.get_key())
