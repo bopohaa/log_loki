@@ -35,12 +35,7 @@ impl LokiStream {
 
 impl From<&mut LogMetric> for LokiStream {
     fn from(metric:&mut LogMetric)->Self{
-        let mut labels = "{".to_string();
-        let names = metric.config().get_label_names();
-        let values = metric.labels();
-        labels.push_str(names.iter().enumerate().map(|(i,e)|format!("{}=\"{}\"",e,values[i])).collect::<Vec<_>>().join(",").as_str());
-        labels.push_str("}");
-
+        let labels = get_labels_string(metric.config(),metric.labels());
         let mut entries:Vec<LokiEntry> = Vec::with_capacity(metric.len());
 
         while let Some(v) = metric.pop(){
@@ -76,6 +71,7 @@ mod protos {
     include!(concat!(env!("OUT_DIR"), "/mod.rs"));
 }
 pub use protos::logproto;
+use crate::LogMetricConf;
 
 impl<'a> From<Vec<logproto::Stream<'a>>> for logproto::PushRequest<'a> {
     fn from(streams:Vec<logproto::Stream<'a>>)->Self{
@@ -85,12 +81,7 @@ impl<'a> From<Vec<logproto::Stream<'a>>> for logproto::PushRequest<'a> {
 
 impl<'a> From<&mut LogMetric> for logproto::Stream<'a> {
     fn from(metric:&mut LogMetric)->Self {
-        let mut labels = "{".to_string();
-        let names = metric.config().get_label_names();
-        let values = metric.labels();
-        labels.push_str(names.iter().enumerate().map(|(i,e)|format!("{}=\"{}\"",e,values[i])).collect::<Vec<_>>().join(",").as_str());
-        labels.push_str("}");
-
+        let labels = get_labels_string(metric.config(),metric.labels());
         let mut entries:Vec<logproto::Entry> = Vec::with_capacity(metric.len());
 
         while let Some(v) = metric.pop(){
@@ -121,4 +112,13 @@ impl From<std::time::SystemTime> for logproto::Timestamp {
             nanos:timestamp.subsec_nanos() as i32
         }
     }
+}
+
+fn get_labels_string(config:&LogMetricConf, values:&Vec<String>)->String{
+    let mut labels = "{".to_string();
+    let names = config.get_label_names();
+    labels.push_str(names.iter().enumerate().map(|(i,e)|format!("{}=\"{}\"",e,values[i])).collect::<Vec<_>>().join(",").as_str());
+    labels.push_str(config.get_const_labels().iter().map(|e|format!("{}=\"{}\"",e[0],e[1])).collect::<Vec<_>>().join(",").as_str());
+    labels.push_str("}");
+    labels
 }
