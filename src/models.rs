@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 use std::hash::Hasher;
 use fnv::FnvHasher;
+use std::borrow::Borrow;
 
 const DEFAULT_CAPACITY:usize=1024;
 
@@ -32,18 +33,18 @@ impl LogMetricConfBuilder {
         self
     }
 
-    pub fn add_label(mut self, label_name:&str)->Self{
-        self.label_names.push(label_name.to_string());
+    pub fn add_label<T:Into<String>>(mut self, label_name:T)->Self{
+        self.label_names.push(label_name.into());
         self
     }
 
-    pub fn add_labels(mut self, label_names: &[&str])->Self{
-        self.label_names.extend(label_names.iter().map(|s| (*s).to_owned()));
+    pub fn add_labels(mut self, label_names: &[&str])->Self {
+        self.label_names.extend(label_names.iter().map(|e|(*e).into()));
         self
     }
 
-    pub fn add_const_label(mut self, name: &str, value: &str) -> Self {
-        self.const_labels.push([name.to_string(), value.to_string()]);
+    pub fn add_const_label<T:Into<String>>(mut self, name: T, value: T) -> Self {
+        self.const_labels.push([name.into(), value.into()]);
         self
     }
 
