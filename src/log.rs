@@ -17,12 +17,13 @@ pub struct LogMetric {
 }
 
 impl LogMetric {
-    pub fn with_labels(config:&Arc<LogMetricConf>, labels:&[&str])->Self{
+    pub fn with_labels(config:Arc<LogMetricConf>, labels:&[&str])->Self{
+        let default_capacity = config.get_default_capacity();
         LogMetric {
             _labels:labels.iter().map(|s| (*s).to_owned()).collect(),
-            _messages: match config.get_default_capacity() { 0 => VecDeque::new(),v@_ => VecDeque::with_capacity(v)},
-            _config: config.clone(),
-            _capacity: config.get_default_capacity()
+            _messages: match default_capacity { 0 => VecDeque::new(),v@_ => VecDeque::with_capacity(v)},
+            _capacity: default_capacity,
+            _config: config,
         }
     }
 
@@ -48,8 +49,8 @@ impl LogMetric {
         Some(())
     }
 
-    pub fn push_lazy<F>(&mut self, get_msg:F)->Option<()>
-        where F:FnOnce()->String
+    pub fn push_lazy<F,Ft>(&mut self, get_msg:F)->Option<()>
+        where Ft:Into<LogMessage>, F:FnOnce()->Ft
     {
         self.can_push()?;
         self._messages.push_back(get_msg().into());
@@ -81,14 +82,15 @@ impl LogContainer {
         }
     }
 
-    pub fn get(&mut self, labels:&[& str])->&Arc<Mutex<LogMetric>>{
+    pub fn get(&mut self, labels:&[& str])->Arc<Mutex<LogMetric>>{
         assert_eq!(self._config.get_label_names().len(), labels.len());
 
         let key = LogContainer::get_key(labels);
-        let conf= &self._config;
+        let conf= self._config.clone();
         self._metrics
             .entry(key)
             .or_insert_with(||Arc::new(Mutex::new(LogMetric::with_labels(conf, labels))))
+            .clone()
     }
 
     pub fn map<F, R>(&self, mut map:F)->Vec<R>
@@ -98,6 +100,12 @@ impl LogContainer {
 
     pub fn values(&self)->std::collections::hash_map::Values<'_, u64, Arc<Mutex<LogMetric>>>{
         self._metrics.values()
+    }
+
+    pub fn set_capacity_for_all(&self, capacity:usize){
+        for (_,v) in self._metrics.iter(){
+            v.lock().unwrap().set_capacity(capacity);
+        }
     }
 
     fn get_key(labels: &[&str]) -> u64 {
@@ -116,6 +124,7 @@ lazy_static!{
     static ref CONTAINERS: Mutex<HashMap<u64, Arc<Mutex<LogContainer>>>> = Mutex::new(HashMap::new());
 }
 
+#[allow(dead_code)]
 impl Log {
     pub fn create(config:LogMetricConf)->Option<Arc<Mutex<LogContainer>>>{
         use std::collections::hash_map::Entry::*;

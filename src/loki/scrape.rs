@@ -94,10 +94,35 @@ pub struct LokiScrapeConfig {
 
 #[allow(dead_code)]
 impl LokiScrapeConfig {
-    pub fn new(loki_url:String, scrape_interval_ms:u64, timeout_connect_ms:Option<u64>, timeout_write_ms:Option<u64>, timeout_read_ms:Option<u64>)->Self{
+    pub fn new(loki_connection_string:&str, scrape_interval_ms:u64)->Self{
+        let mut parts = loki_connection_string.splitn(2, "?");
+        let loki_url = parts.next().unwrap().into();
+        let mut scrape_interval = scrape_interval_ms;
+        let mut timeout_connect_ms=None;
+        let mut timeout_write_ms=None;
+        let mut timeout_read_ms=None;
+        if let Some(query) = parts.next(){
+            let mut parts = query.split("&");
+            while let Some(part) = parts.next() {
+                let mut pair = part.split("=");
+                let name = pair.next();
+                let value:Option<&str> = pair.next();
+                match name{
+                    None=> continue,
+                    Some(v)=> match v{
+                        "scrape_interval" => scrape_interval=value.map_or(scrape_interval, |v|v.parse::<u64>().unwrap_or(scrape_interval)),
+                        "connect_timeout" => timeout_connect_ms=value.map_or(None, |v|v.parse::<u64>().ok()),
+                        "write_timeout" => timeout_write_ms=value.map_or(None, |v|v.parse::<u64>().ok()),
+                        "read_timeout" => timeout_read_ms=value.map_or(None, |v|v.parse::<u64>().ok()),
+                        &_ => continue,
+                    }
+                }
+            }
+        };
+
         LokiScrapeConfig {
             loki_url,
-            scrape_interval: Duration::from_millis(scrape_interval_ms),
+            scrape_interval: Duration::from_millis(scrape_interval),
             timeout_connect_ms,
             timeout_write_ms,
             timeout_read_ms,

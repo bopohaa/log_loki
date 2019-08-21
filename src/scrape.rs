@@ -26,7 +26,7 @@ pub trait ScrapeConfig {
 pub trait ScrapeEvents {
     fn on_start(&self){}
     fn on_after_scrape(&self, size:usize){}
-    fn on_error(&self, err:Error){}
+    fn on_error<T:std::error::Error>(&self, err:T){}
     fn on_end(&self){}
 }
 

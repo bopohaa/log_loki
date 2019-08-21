@@ -1,7 +1,6 @@
 use std::time::SystemTime;
 use std::hash::Hasher;
 use fnv::FnvHasher;
-use std::borrow::Borrow;
 
 const DEFAULT_CAPACITY:usize=1024;
 
@@ -90,6 +89,10 @@ impl LogMetricConf {
         self.default_capacity
     }
 
+    pub fn set_default_capacity(&mut self, capacity:usize){
+        self.default_capacity = capacity;
+    }
+
     pub fn get_key(&self)->u64{
         self.key
     }
@@ -99,11 +102,11 @@ pub struct LogMessage {
     pub time:SystemTime,
     pub message:String,
 }
-impl From<String> for LogMessage{
-    fn from(msg:String)->Self{
+impl<T: Into<String>> From<T> for LogMessage{
+    fn from(msg:T)->Self{
         LogMessage{
             time: SystemTime::now(),
-            message: msg
+            message: msg.into()
         }
     }
 }

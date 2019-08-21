@@ -71,7 +71,7 @@ mod protos {
     include!(concat!(env!("OUT_DIR"), "/mod.rs"));
 }
 pub use protos::logproto;
-use crate::LogMetricConf;
+use crate::models::LogMetricConf;
 
 impl<'a> From<Vec<logproto::Stream<'a>>> for logproto::PushRequest<'a> {
     fn from(streams:Vec<logproto::Stream<'a>>)->Self{
@@ -117,8 +117,11 @@ impl From<std::time::SystemTime> for logproto::Timestamp {
 fn get_labels_string(config:&LogMetricConf, values:&Vec<String>)->String{
     let mut labels = "{".to_string();
     let names = config.get_label_names();
-    labels.push_str(names.iter().enumerate().map(|(i,e)|format!("{}=\"{}\"",e,values[i])).collect::<Vec<_>>().join(",").as_str());
-    labels.push_str(config.get_const_labels().iter().map(|e|format!("{}=\"{}\"",e[0],e[1])).collect::<Vec<_>>().join(",").as_str());
+    let const_labels = config.get_const_labels();
+    let mut parts:Vec<String> = Vec::with_capacity(names.len()+const_labels.len());
+    parts.extend(const_labels.iter().map(|e|format!("{}=\"{}\"",e[0],e[1])));
+    parts.extend(names.iter().enumerate().map(|(i,e)|format!("{}=\"{}\"",e,values[i])));
+    labels.push_str(parts.join(",").as_str());
     labels.push_str("}");
     labels
 }
